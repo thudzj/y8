@@ -222,9 +222,11 @@ class LstmModel(models.BaseModel):
                 ])
 
     loss = 0.0
-
-    outputs, state = tf.nn.dynamic_rnn(stacked_lstm, model_input,
-                                       sequence_length=num_frames,
+    # llength = 20
+    # length = llength * tf.ones_like(num_frames)
+    # num_frames = tf.cast(tf.expand_dims(num_frames, 1), tf.float32)
+    outputs, state = tf.nn.dynamic_rnn(stacked_lstm, model_input,#utils.SampleASequence(model_input, num_frames, llength),
+                                       sequence_length= num_frames,#length,
                                        dtype=tf.float32)
 
     aggregated_model = getattr(video_level_models,
