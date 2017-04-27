@@ -89,6 +89,10 @@ if __name__ == "__main__":
   flags.DEFINE_integer("export_model_steps", 1000,
                        "The period, in number of steps, with which the model "
                        "is exported for batch prediction.")
+  flags.DEFINE_integer("llength", 0,
+                       "Length of the lstm model.")
+  flags.DEFINE_string("ltype", "sample",
+                      "Type of the lstm model.")
 
   # Other flags.
   flags.DEFINE_integer("num_readers", 8,
@@ -266,11 +270,21 @@ def build_graph(reader,
     with tf.device(device_string % i):
       with (tf.variable_scope(("tower"), reuse=True if i > 0 else None)):
         with (slim.arg_scope([slim.model_variable, slim.variable], device="/cpu:0" if num_gpus!=1 else "/gpu:0")):
-          result = model.create_model(
-            tower_inputs[i],
-            num_frames=tower_num_frames[i],
-            vocab_size=reader.num_classes,
-            labels=tower_labels[i])
+
+          tower_inputs[i] = tf.reshape(tower_inputs[i], [batch_size, 300, 1024])
+          tower_num_frames[i] = tf.reshape(tower_num_frames[i], [batch_size])
+          if FLAGS.model == 'LstmModel':
+            result = model.create_model(
+              tower_inputs[i],
+              num_frames=tower_num_frames[i],
+              vocab_size=reader.num_classes,
+              labels=tower_labels[i], llength=FLAGS.llength, type=FLAGS.ltype)
+          else:
+            result = model.create_model(
+              tower_inputs[i],
+              num_frames=tower_num_frames[i],
+              vocab_size=reader.num_classes,
+              labels=tower_labels[i])
           for variable in slim.get_model_variables():
             tf.summary.histogram(variable.op.name, variable)
 
@@ -650,7 +664,8 @@ def main(unused_argv):
     model_exporter = export_model.ModelExporter(
         frame_features=FLAGS.frame_features,
         model=model,
-        reader=reader)
+        reader=reader,
+        flags = FLAGS)
 
     Trainer(cluster, task, FLAGS.train_dir, model, reader, model_exporter,
             FLAGS.log_device_placement, FLAGS.max_steps,

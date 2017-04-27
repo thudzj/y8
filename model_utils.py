@@ -79,7 +79,46 @@ def SampleASequence(model_input, num_frames, num_samples):
       tf.expand_dims(tf.range(batch_size), 1), [1, num_samples])
   index = tf.stack([batch_index, tf.minimum(frame_index, tf.tile(tf.cast(num_frames, tf.int32), [1, num_samples]))], 2)
   return tf.gather_nd(model_input, index)
-
+  
+def MeanASequence(model_input, num_frames, num_samples):
+  batch_size = tf.shape(model_input)[0]
+  interv = tf.cast(tf.cast(num_frames, tf.float32) / num_samples, tf.int32)
+  
+  model_inputs = tf.unstack(model_input)
+  intervs = tf.unstack(interv)
+  num_framess = tf.unstack(num_frames)
+  output = []
+  print model_input.get_shape().as_list()
+  for i in range(model_input.get_shape().as_list()[0]):
+    start_frame_index = tf.cast(
+      tf.multiply(
+          tf.random_uniform([1]),
+          tf.cast(num_framess[i] - intervs[i]*num_samples, tf.float32)), tf.int32)
+    tmp = model_inputs[i][start_frame_index[0]:start_frame_index[0]+intervs[i]*num_samples, :]
+    tmp = tf.reshape(tmp, [num_samples, intervs[i], 1024])
+    output.append(tf.reduce_mean(tmp, 1))
+  return tf.stack(output, 0)
+  
+def MaxASequence(model_input, num_frames, num_samples):
+  batch_size = tf.shape(model_input)[0]
+  interv = tf.cast(tf.cast(num_frames, tf.float32) / num_samples, tf.int32)
+  
+  model_inputs = tf.unstack(model_input)
+  intervs = tf.unstack(interv)
+  num_framess = tf.unstack(num_frames)
+  output = []
+  print model_input.get_shape().as_list()
+  for i in range(model_input.get_shape().as_list()[0]):
+    start_frame_index = tf.cast(
+      tf.multiply(
+          tf.random_uniform([1]),
+          tf.cast(num_framess[i] - intervs[i]*num_samples, tf.float32)), tf.int32)
+    tmp = model_inputs[i][start_frame_index[0]:start_frame_index[0]+intervs[i]*num_samples, :]
+    tmp = tf.reshape(tmp, [num_samples, intervs[i], 1024])
+    output.append(tf.reduce_max(tmp, 1))
+  return tf.stack(output, 0)
+    
+  
 def FramePooling(frames, method, **unused_params):
   """Pools over the frames of a video.
 

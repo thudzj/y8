@@ -196,7 +196,7 @@ class DbofModel(models.BaseModel):
 
 class LstmModel(models.BaseModel):
 
-  def create_model(self, model_input, vocab_size, num_frames, **unused_params):
+  def create_model(self, model_input, vocab_size, num_frames, llength, type, **unused_params):
     """Creates a model which uses a stack of LSTMs to represent the video.
 
     Args:
@@ -222,12 +222,24 @@ class LstmModel(models.BaseModel):
                 ])
 
     loss = 0.0
-    # llength = 20
-    # length = llength * tf.ones_like(num_frames)
-    # num_frames = tf.cast(tf.expand_dims(num_frames, 1), tf.float32)
-    outputs, state = tf.nn.dynamic_rnn(stacked_lstm, model_input,#utils.SampleASequence(model_input, num_frames, llength),
-                                       sequence_length= num_frames,#length,
+    if llength == 0:
+      outputs, state = tf.nn.dynamic_rnn(stacked_lstm, model_input,
+                                       sequence_length= num_frames,
                                        dtype=tf.float32)
+    else:
+      length = llength * tf.ones_like(num_frames)
+      if type == 'sample':
+        num_frames = tf.cast(tf.expand_dims(num_frames, 1), tf.float32)
+        model_input_ = utils.SampleASequence(model_input, num_frames, llength)
+      elif type == 'mean':
+        model_input_ = utils.MeanASequence(model_input, num_frames, llength)
+        print model_input_.shape
+      elif type == 'max':
+        model_input_ = utils.MaxASequence(model_input, num_frames, llength)
+        print model_input_.shape
+      outputs, state = tf.nn.dynamic_rnn(stacked_lstm, model_input_,
+                                         sequence_length= length,
+                                         dtype=tf.float32)
 
     aggregated_model = getattr(video_level_models,
                                FLAGS.video_level_classifier_model)

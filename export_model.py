@@ -26,10 +26,11 @@ _TOP_PREDICTIONS_IN_OUTPUT = 20
 
 class ModelExporter(object):
 
-  def __init__(self, frame_features, model, reader):
+  def __init__(self, frame_features, model, reader, flags):
     self.frame_features = frame_features
     self.model = model
     self.reader = reader
+    self.flags = flags
 
     with tf.Graph().as_default() as graph:
       self.inputs, self.outputs = self.build_inputs_and_outputs()
@@ -92,12 +93,21 @@ class ModelExporter(object):
     model_input = tf.nn.l2_normalize(model_input_raw, feature_dim)
 
     with tf.variable_scope("tower"):
-      result = self.model.create_model(
-          model_input,
-          num_frames=num_frames,
-          vocab_size=self.reader.num_classes,
-          labels=labels_batch,
-          is_training=False)
+    
+      if self.flags.model == 'LstmModel':
+        result = self.model.create_model(
+            model_input,
+            num_frames=num_frames,
+            vocab_size=self.reader.num_classes,
+            labels=labels_batch,
+            is_training=False, llength=self.flags.llength, type=self.flags.ltype)
+      else:
+        result = self.model.create_model(
+            model_input,
+            num_frames=num_frames,
+            vocab_size=self.reader.num_classes,
+            labels=labels_batch,
+            is_training=False)
 
       for variable in slim.get_model_variables():
         tf.summary.histogram(variable.op.name, variable)
